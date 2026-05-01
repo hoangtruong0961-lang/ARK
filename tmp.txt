@@ -1,0 +1,404 @@
+770-};
+771-
+772:const GameplayScreen: React.FC<NavigationProps> = ({ onNavigate, activeWorld, onUpdateWorld }) => {
+773-  const [isLoading, setIsLoading] = useState(false);
+774:  const [history, setHistory] = useState<ChatMessage[]>(activeWorld?.savedState?.history || []);
+775-  const [lastAction, setLastAction] = useState('');
+776-  const [settings, setSettings] = useState<AppSettings | null>(null);
+777:  const [turnCount, setTurnCount] = useState(activeWorld?.savedState?.turnCount || 0);
+778-  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+779-  const [isSaving, setIsSaving] = useState(false);
+780-  
+781-  // AI Monitor States
+782:  const [tokenHistory, setTokenHistory] = useState<{tokens: number, words: number, timestamp: number}[]>(activeWorld?.savedState?.aiMonitor?.tokenHistory || []);
+783:  const [totalTokens, setTotalTokens] = useState<number>(activeWorld?.savedState?.aiMonitor?.totalTokens || 0);
+784-  const processingStartTimeRef = useRef<number | null>(null);
+785-  const [currentProcessingTime, setCurrentProcessingTime] = useState<number>(0);
+786:  const [lastTurnTotalTime, setLastTurnTotalTime] = useState<number>(activeWorld?.savedState?.aiMonitor?.lastTurnTotalTime || 0);
+787-
+788-  // Image Library States
+--
+812-  // Dynamic States (Rules & Tawa)
+813-  const [tawaPresetConfig, setTawaPresetConfig] = useState<TawaPresetConfig>(DEFAULT_PRESET_CONFIG);
+814:  const [dynamicRules, setDynamicRules] = useState<string[]>(activeWorld?.config?.rules || []);
+815:  const [dynamicRegexScripts, setDynamicRegexScripts] = useState<import('../../../types').RegexScript[]>(activeWorld?.config?.regexScripts || []);
+816:  const [gameTime, setGameTime] = useState<GameTime>(activeWorld?.gameTime || INITIAL_GAME_TIME);
+817-
+818-  const handleTawaConfigChange = useCallback((config: TawaPresetConfig) => {
+--
+825-    if (selectingAvatarFor.type === 'player') {
+826-        const updatedWorld = {
+827:            ...activeWorld,
+828:            player: { ...activeWorld.player, avatar: image.data }
+829-        };
+830-        onUpdateWorld(updatedWorld);
+831-    } else if (selectingAvatarFor.type === 'entity' && selectingAvatarFor.id) {
+832:        const updatedEntities = activeWorld.entities.map(e => 
+833-            e.id === selectingAvatarFor.id ? { ...e, avatar: image.data } : e
+834-        );
+835-        const updatedWorld = {
+836:            ...activeWorld,
+837-            entities: updatedEntities
+838-        };
+--
+846-  // LSR State
+847-  const [lsrTables, setLsrTables] = useState<LsrTableDefinition[]>([]);
+848:  const [lsrRuntimeData, setLsrRuntimeData] = useState<Record<string, unknown[]>>(activeWorld?.lsrData || {});
+849-  const [activeLsrTableId, setActiveLsrTableId] = useState<string | null>(null);
+850-  const { isMobile } = useResponsive();
+--
+863-
+864-  // Refs for state data to ensure up-to-date values in callbacks without triggering re-renders or loops
+865:  const tokenHistoryRef = useRef<{tokens: number, words: number, timestamp: number}[]>(activeWorld?.savedState?.aiMonitor?.tokenHistory || []);
+866:  const totalTokensRef = useRef<number>(activeWorld?.savedState?.aiMonitor?.totalTokens || 0);
+867:  const lastTurnTotalTimeRef = useRef<number>(activeWorld?.savedState?.aiMonitor?.lastTurnTotalTime || 0);
+868:  const historyRef = useRef<ChatMessage[]>(activeWorld?.savedState?.history || []);
+869:  const turnCountRef = useRef<number>(activeWorld?.savedState?.turnCount || 0);
+870:  const gameTimeRef = useRef<GameTime>(activeWorld?.gameTime || INITIAL_GAME_TIME);
+871:  const lsrRuntimeDataRef = useRef<Record<string, unknown[]>>(activeWorld?.lsrData || {});
+872:  const activeWorldSummaryRef = useRef<string | undefined>(activeWorld?.summary);
+873-  const lastActionRef = useRef<string | undefined>(lastAction);
+874:  const activeWorldRef = useRef<WorldData | null>(activeWorld);
+875:  const dynamicRulesRef = useRef<string[]>(activeWorld?.config?.rules || []);
+876:  const dynamicRegexScriptsRef = useRef<import('../../../types').RegexScript[]>(activeWorld?.config?.regexScripts || []);
+877-  const tawaPresetConfigRef = useRef<TawaPresetConfig>(tawaPresetConfig);
+878-
+--
+885-      setTimeout(() => {
+886-        onUpdateWorld({
+887:          summary: currentSummary || activeWorldSummaryRef.current,
+888-          lsrData: currentLsrData || lsrRuntimeDataRef.current,
+889-          config: {
+890:            ...activeWorldRef.current?.config,
+891-            rules: dynamicRulesRef.current,
+892-            tawaPreset: tawaPresetConfigRef.current,
+--
+916-  useEffect(() => { gameTimeRef.current = gameTime; }, [gameTime]);
+917-  useEffect(() => { lsrRuntimeDataRef.current = lsrRuntimeData; }, [lsrRuntimeData]);
+918:  useEffect(() => { activeWorldSummaryRef.current = activeWorld?.summary; }, [activeWorld?.summary]);
+919-  useEffect(() => { lastActionRef.current = lastAction; }, [lastAction]);
+920:  useEffect(() => { activeWorldRef.current = activeWorld; }, [activeWorld]);
+921-  useEffect(() => { dynamicRulesRef.current = dynamicRules; }, [dynamicRules]);
+922-  useEffect(() => { dynamicRegexScriptsRef.current = dynamicRegexScripts; }, [dynamicRegexScripts]);
+--
+925-  // CẢI TIẾN: Đồng bộ dữ liệu LSR sang danh sách thực thể (entities) để có thể tương tác
+926-  useEffect(() => {
+927:    if (!isReadyRef.current || !lsrRuntimeData || !activeWorld) return;
+928-
+929:    const currentEntities = activeWorld.entities || [];
+930-    const newEntities: Entity[] = [...currentEntities];
+931-    let hasChanges = false;
+--
+936-        
+937-        // CẢI TIẾN: Không thêm người chơi (PC) vào danh sách thực thể NPC
+938:        const playerName = activeWorld.player.name;
+939-        if (playerName && (name.toLowerCase() === playerName.toLowerCase() || name.toLowerCase() === "user" || name.toLowerCase() === "player")) return;
+940-
+--
+981-        onUpdateWorld({ entities: newEntities });
+982-    }
+983:  }, [lsrRuntimeData, activeWorld, onUpdateWorld]);
+984-
+985-  // Sync dynamic rules and tawa preset back to world state when they change
+--
+1000-  
+1001-  useEffect(() => {
+1002:      if (!activeWorld || !settings?.enableVectorMemory || !isReadyRef.current) return;
+1003-      
+1004-      const currentTurn = turnCount;
+--
+1012-          }, 2000);
+1013-      }
+1014:  }, [turnCount, activeWorld, settings, isReadyRef]);
+1015-
+1016-  // Timer Logic
+--
+1316-
+1317-  const triggerAutosave = useCallback(async (currentHistory: ChatMessage[], currentTurn: number, currentTime: GameTime, currentLsrData?: Record<string, unknown[]>) => {
+1318:      if (!activeWorldRef.current || !isReadyRef.current) return;
+1319-      try {
+1320-          // console.log(`GameplayScreen: Triggering Autosave for Turn ${currentTurn}...`);
+1321-          const worldData: WorldData = {
+1322:              ...activeWorldRef.current,
+1323-              lsrData: currentLsrData || lsrRuntimeDataRef.current, // Use provided data or ref
+1324-              config: {
+1325:                  ...activeWorldRef.current.config,
+1326-                  rules: dynamicRulesRef.current,
+1327-                  tawaPreset: tawaPresetConfigRef.current,
+--
+1340-          };
+1341-          
+1342:          const worldName = activeWorldRef.current.world.worldName || 'Unknown_World';
+1343-          const slotId = `autosave-${worldName.replace(/\s+/g, '_')}-${currentTurn}`;
+1344-
+--
+1356-
+1357-  const handleSend = async (textToSend: string) => {
+1358:    if (!textToSend || isLoading || !activeWorld || !settings) return;
+1359-
+1360-    // Apply Format User Input regex (Placement 0) - Permanently
+1361-    let finalUserText = textToSend;
+1362-    const isDebug = typeof window !== 'undefined' && (window as any).__TAWA_REGEX_DEBUG__ === true;
+1363:    const currentPlayerName = activeWorld.player?.name || 'User';
+1364:    const currentCharName = activeWorld.entities?.[0]?.name || 'Character';
+1365-    // Apply Format User Input regex from dynamic system
+1366-    if (dynamicRegexScripts) {
+--
+1387-    
+1388-    if (settings.streamResponse) {
+1389:        await runStreamGeneration(userMsg.text, newHistory, settings, undefined, activeWorld, gameTime);
+1390-    } else {
+1391-        setIsLoading(true);
+1392-        const effectiveWorldData: WorldData = {
+1393:            ...activeWorld,
+1394-            lsrData: lsrRuntimeDataRef.current, // Sử dụng dữ liệu LSR hiện tại từ Ref để tránh stale
+1395-            gameTime: gameTime,
+--
+1400-            },
+1401-            config: {
+1402:                ...activeWorld.config,
+1403-                rules: dynamicRules,
+1404-                tawaPreset: tawaPresetConfig,
+--
+1472-    isReadyRef.current = true;
+1473-    
+1474:    // Update activeWorld in parent
+1475-    if (onUpdateWorld) {
+1476-        onUpdateWorld(worldData);
+--
+1494-
+1495-    const handleRegenerate = async (msgIndex: number) => {
+1496:        if (isLoading || !activeWorld || !settings) return;
+1497-        
+1498-        // Determine context: history up to msgIndex - 1 (the user message triggering this)
+--
+1512-        if (settings.streamResponse) {
+1513-            // Pass the correct startTime to runStreamGeneration
+1514:            await runStreamGeneration(userInput, history, settings, msgIndex, activeWorld, startTime);
+1515-        } else {
+1516-            setIsLoading(true);
+1517-            const effectiveWorldData: WorldData = {
+1518:                ...activeWorld,
+1519-                lsrData: lsrRuntimeDataRef.current,
+1520-                config: {
+1521:                    ...activeWorld.config,
+1522-                    rules: dynamicRules,
+1523-                    tawaPreset: tawaPresetConfig,
+--
+1546-            let finalRegenText = result.text;
+1547-            const isDebug = typeof window !== 'undefined' && (window as any).__TAWA_REGEX_DEBUG__ === true;
+1548:            const currentPlayerName = activeWorld.player?.name || 'User';
+1549-            if (dynamicRegexScripts) {
+1550-                finalRegenText = applySTRegex(finalRegenText, dynamicRegexScripts, currentPlayerName, 'Character', [1], isDebug);
+--
+1567-      setIsLoading(true);
+1568-      const effectiveWorldData: WorldData = {
+1569:          ...(world || activeWorldRef.current!),
+1570-          lsrData: lsrRuntimeDataRef.current, // Sử dụng dữ liệu LSR hiện tại từ state
+1571-          gameTime: time || gameTimeRef.current,
+--
+1576-          },
+1577-          config: {
+1578:              ...(world || activeWorldRef.current!).config,
+1579-              rules: dynamicRulesRef.current,
+1580-              tawaPreset: tawaPresetConfigRef.current,
+--
+1802-          let finalAccumulatedText = accumulatedText;
+1803-          const isDebug = typeof window !== 'undefined' && (window as any).__TAWA_REGEX_DEBUG__ === true;
+1804:          const currentPlayerName = activeWorldRef.current?.player?.name || 'User';
+1805-          if (dynamicRegexScriptsRef.current) {
+1806-               finalAccumulatedText = applySTRegex(finalAccumulatedText, dynamicRegexScriptsRef.current, currentPlayerName, 'Character', [1], isDebug);
+--
+1886-    let finalResponseText = responseText;
+1887-    const isDebug = typeof window !== 'undefined' && (window as any).__TAWA_REGEX_DEBUG__ === true;
+1888:    const currentPlayerName = activeWorldRef.current?.player?.name || 'User';
+1889-    if (dynamicRegexScriptsRef.current) {
+1890-        finalResponseText = applySTRegex(finalResponseText, dynamicRegexScriptsRef.current, currentPlayerName, 'Character', [1], isDebug);
+--
+1983-    // If world object reference changes, allow re-initialization
+1984-    // Use a unique property or the object itself to detect a "new session"
+1985:    if (activeWorld && activeWorld !== lastWorldRef.current) {
+1986-        // console.log("GameplayScreen: New world detected, resetting initialization.");
+1987-        initializedRef.current = false;
+1988:        lastWorldRef.current = activeWorld;
+1989-        initialStartedRef.current = false;
+1990-        isReadyRef.current = false; // Reset ready state for new world
+--
+2002-      setLsrTables(LsrParser.parseDefinitions());
+2003-
+2004:      if (activeWorld) {
+2005-          // Sync initial rules from world config
+2006:          setDynamicRules(activeWorld.config.rules || []);
+2007-          
+2008-          // Sync Regex scripts
+2009:          setDynamicRegexScripts(activeWorld.config.regexScripts || []);
+2010-          
+2011-          // Sync Tawa Preset from world config
+2012:          if (activeWorld.config.tawaPreset) {
+2013:              setTawaPresetConfig(activeWorld.config.tawaPreset);
+2014-          }
+2015-
+2016-          // Load LSR Data
+2017:          if (activeWorld.lsrData) {
+2018:              setLsrRuntimeData(activeWorld.lsrData);
+2019-          }
+2020-
+2021:          const worldDataWithState = activeWorld as WorldData;
+2022-          if (worldDataWithState.savedState && worldDataWithState.savedState.history.length > 0) {
+2023-              // console.log("GameplayScreen: Loading saved state, history length:", worldDataWithState.savedState.history.length);
+--
+2073-    };
+2074-    init();
+2075:  }, [activeWorld, handleSendInitial, triggerInitialSave]);
+2076-
+2077-  const updateMessageSwipes = (index: number, newText: string, overrideTime?: GameTime) => {
+--
+2158-        const newHistory = [...prev];
+2159-        if (newHistory[index]) {
+2160:            const currentPlayerName = activeWorldRef.current?.player?.name || 'User';
+2161-            // Apply only regex scripts that have runOnEdit = true
+2162-            let finalText = newText;
+--
+2194-
+2195-  const handleEntityClick = useCallback((id: string) => {
+2196:    const entity = activeWorld?.entities.find(e => e.id === id);
+2197-    if (entity) setSelectedEntity(entity);
+2198:  }, [activeWorld?.entities]);
+2199-
+2200-  // Handle messages from HTML widget iframes
+--
+2431-
+2432-  const handleManualSave = async () => {
+2433:    if (!activeWorld) return;
+2434-    setIsSaving(true);
+2435-    
+2436:    const worldName = activeWorld?.world?.worldName || 'Unknown_World';
+2437:    const playerName = activeWorld?.player?.name || 'Unknown_Hero';
+2438-    const turnCountValue = history.filter(m => m.role === 'user').length;
+2439-    
+2440-    // 1. Prepare Save Data
+2441-    const saveData: WorldData = {
+2442:        ...activeWorld,
+2443-        lsrData: lsrRuntimeData, // CRITICAL: Include latest LSR data
+2444-        savedState: {
+--
+2453-        },
+2454-        config: {
+2455:            ...activeWorld.config,
+2456-            rules: dynamicRules,
+2457-            tawaPreset: tawaPresetConfig,
+--
+2507-
+2508-  const handleUpdateContextConfig = (newConfig: ContextWindowConfig) => {
+2509:    if (onUpdateWorld && activeWorld) {
+2510-      onUpdateWorld({
+2511-        config: {
+2512:          ...activeWorld.config,
+2513-          contextConfig: newConfig
+2514-        }
+--
+2518-
+2519-  const ContextWindowModal = () => {
+2520:    if (!activeWorld || !showContextModal) return null;
+2521-    
+2522-    // Default config if not exists
+--
+2536-    };
+2537-
+2538:    const config = activeWorld.config.contextConfig || defaultConfig;
+2539-
+2540-    const toggleItem = (key: keyof typeof config.items) => {
+--
+2712-              <button onClick={() => setShowCharModal(true)} className="w-full flex items-center gap-2 p-1.5 bg-stone-200 dark:bg-slate-800/50 hover:bg-stone-400 dark:hover:bg-slate-700 border border-stone-400 dark:border-slate-700 rounded transition-all group">
+2713-                  <div className="w-8 h-8 rounded-full bg-stone-300 dark:bg-slate-900 border border-stone-400 dark:border-slate-600 flex items-center justify-center shrink-0 group-hover:border-mystic-accent"><User className="text-mystic-accent" size={16}/></div>
+2714:                  <div className="text-left"><h3 className="font-normal text-stone-800 dark:text-slate-200 text-xs truncate">{activeWorld.player.name}</h3></div>
+2715-              </button>
+2716-              <button onClick={() => setShowGlobalModal(true)} className="w-full flex items-center gap-2 p-1.5 bg-stone-200 dark:bg-slate-800/50 hover:bg-stone-400 dark:hover:bg-slate-700 border border-stone-400 dark:border-slate-700 rounded transition-all group">
+--
+2829-
+2830-              <WorldInfoSidebar 
+2831:                 lorebook={activeWorld.lorebook} 
+2832-                 onUpdateLorebook={(l) => onUpdateWorld && onUpdateWorld({ lorebook: l })} 
+2833-              />
+--
+2836-                scripts={dynamicRegexScripts} 
+2837-                onUpdate={setDynamicRegexScripts} 
+2838:                playerName={activeWorld.player.name} 
+2839:                charName={activeWorld.entities?.[0]?.name || "Character"} 
+2840-              />
+2841-              
+--
+2864-
+2865-  // --- RENDER ---
+2866:  if (!activeWorld) return null;
+2867-
+2868-  const lastMessage = history[history.length - 1];
+--
+2883-                 <div className="flex flex-col items-center">
+2884-                     <h1 className="font-bold text-stone-800 dark:text-slate-200 text-xs md:text-sm tracking-wide leading-tight font-mono truncate max-w-[180px] md:max-w-none">
+2885:                         {activeWorld.world.worldName}
+2886-                     </h1>
+2887-                     <div className="mt-0.5 flex items-center gap-2">
+--
+2933-                                        isStreaming={isStreamingMsg} // Pass prop
+2934-                                        regexScripts={dynamicRegexScripts}
+2935:                                        entities={activeWorld.entities}
+2936-                                        onEntityClick={handleEntityClick}
+2937-                                        turnNumber={isModel ? msg.turnNumber : undefined}
+2938-                                        userAction={isModel ? msg.userAction : undefined}
+2939:                                        playerName={activeWorld.player.name}
+2940:                                        playerAvatar={activeWorld.player.avatar}
+2941-                                        messageRole={isModel ? 'assistant' : 'user'}
+2942-                                        contentBeautify={settings?.contentBeautify}
+--
+3260-                                    className="w-20 h-20 rounded-full bg-stone-300 dark:bg-slate-800 border-2 border-mystic-accent flex items-center justify-center shrink-0 shadow-lg overflow-hidden group relative"
+3261-                                >
+3262:                                    {activeWorld.player.avatar ? (
+3263:                                        <img src={activeWorld.player.avatar} alt={activeWorld.player.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+3264-                                    ) : (
+3265-                                        <User size={40} className="text-mystic-accent" />
+--
+3270-                                </button>
+3271-                                <div>
+3272:                                    <h3 className="text-2xl font-bold text-stone-900 dark:text-white mb-1 font-mono text-[12px]">{activeWorld.player.name}</h3>
+3273-                                    <div className="flex gap-2 text-sm text-stone-500 dark:text-slate-400">
+3274:                                        <span className="bg-stone-300 dark:bg-slate-800 px-2 py-0.5 rounded border border-stone-400 dark:border-slate-700">{activeWorld.player.gender}</span>
+3275:                                        <span className="bg-stone-300 dark:bg-slate-800 px-2 py-0.5 rounded border border-stone-400 dark:border-slate-700">{activeWorld.player.age} tuổi</span>
+3276-                                    </div>
+3277-                                </div>
+--
+3283-                                    <MarkdownRenderer 
+3284-                                        className="text-sm text-stone-700 dark:text-slate-300 bg-stone-300 dark:bg-slate-800/50 p-1 rounded border border-stone-400 dark:border-slate-700/50 leading-relaxed"
+3285:                                        content={activeWorld.player.appearance || "Chưa có mô tả ngoại hình."}
+3286-                                    />
+3287-                                </div>
+--
+3291-                                    <MarkdownRenderer 
+3292-                                        className="text-sm text-stone-700 dark:text-slate-300 bg-stone-300 dark:bg-slate-800/50 p-1 rounded border border-stone-400 dark:border-slate-700/50 leading-relaxed"
+3293:                                        content={activeWorld.player.personality || "Chưa có mô tả tính cách."}
+3294-                                    />
+3295-                                </div>
+--
+3299-                                    <MarkdownRenderer 
+3300-                                        className="text-sm text-stone-700 dark:text-slate-300 bg-stone-300 dark:bg-slate-800/50 p-1 rounded border border-stone-400 dark:border-slate-700/50 leading-relaxed"
+3301:                                        content={activeWorld.player.background || "Chưa có tiểu sử."}
+3302-                                    />
+3303-                                </div>
+--
+3308-                                        <MarkdownRenderer 
+3309-                                            className="text-sm text-stone-700 dark:text-slate-300 bg-stone-300 dark:bg-slate-800/50 p-1 rounded border border-stone-400 dark:border-slate-700/50 leading-relaxed h-full"
+3310:                                            content={activeWorld.player.skills || "Không có kỹ năng đặc biệt."}
+3311-                                        />
+3312-                                    </div>
+--
+3315-                                        <MarkdownRenderer 
+3316-                                            className="text-sm text-stone-700 dark:text-slate-300 bg-stone-300 dark:bg-slate-800/50 p-1 rounded border border-stone-400 dark:border-slate-700/50 leading-relaxed h-full"
+3317:                                            content={activeWorld.player.goal || "Chưa xác định mục tiêu."}
+3318-                                        />
+3319-                                    </div>
+--
+3462-            }}
+3463-            onSelect={handleAvatarSelect}
+3464:            selectedId={selectingAvatarFor?.type === 'player' ? activeWorld.player.avatar : activeWorld.entities.find(e => e.id === selectingAvatarFor?.id)?.avatar}
+3465-        />
+3466-
